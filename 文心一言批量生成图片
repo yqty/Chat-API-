@@ -1,0 +1,44 @@
+import requests
+import os
+import pandas as pd
+
+def ask_question(question, token):
+    url = "http://localhost:5000/ernie/ask"
+    
+    params = {
+        "question": question,
+        "token": token
+    }
+    
+    print(f"Sending request to {url} with params: {params}")
+    response = requests.post(url, data=params)
+    if response is None:
+        print("Error: 请求失败")
+    else:
+        response_json = response.json()
+        print(f"Received response: {response_json}")
+        if "data" in response_json and len(response_json["data"]["urls"]) > 0:
+            return response_json["data"]["urls"][0]
+        else:
+            print(f"Error: response does not contain image URL for question '{question}'")
+            return None
+
+if __name__ == "__main__":
+    # 读入CSV文件和图片目录
+    csv_file = pd.read_csv("task.csv")
+    img_dir = "images"
+
+    # 读取token
+    with open("token.txt") as f:
+        token = f.read()
+
+    # 循环问每个问题,获取图片URL并下载图片
+    for index, row in csv_file.iterrows():
+        question = row["prompt"]
+        img_name = str(row["NO."])
+        img_path = os.path.join(img_dir, img_name + ".jpg")
+        img_url = ask_question(question, token)
+        if img_url is not None:
+            print(f"Downloading {img_name} image ...")
+            r = requests.get(img_url, allow_redirects=True)
+            open(img_path, "wb").write(r.content)
